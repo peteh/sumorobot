@@ -1,0 +1,185 @@
+#include "SumoBluetooth.h"
+#include <Arduino.h>
+
+namespace sumobot
+{
+
+
+// BLE NUS received callback
+class MyCallbacks : public BLECharacteristicCallbacks
+{
+  void onWrite(BLECharacteristic *nusRxCharacteristic)
+  {
+    // Get the received command over BLE
+    std::string cmd = nusRxCharacteristic->getValue();
+#if DEBUG
+    Serial.println(cmd.c_str());
+#endif
+    if (cmd.length() > 0)
+    {
+      //int speed = atoi(rxValue.c_str());
+      //Serial.println(speed);
+      //ledcWrite(1, speed); // left 1 ... 100
+      //ledcWrite(2, speed); // right 1 ... 30
+      // Specify command
+      if (cmd == cmdForward)
+      {
+        //robotMoving = true;
+        //ledcWrite(1, 100);
+        //ledcWrite(2, 1);
+        g_platform.setLeft(1.);
+        g_platform.setRight(1.);
+      }
+      else if (cmd == cmdBackward)
+      {
+        //robotMoving = true;
+        //ledcWrite(1, 1);
+        //ledcWrite(2, 30);
+        g_platform.setLeft(-1.);
+        g_platform.setRight(-1.);
+      }
+      else if (cmd == cmdLeft)
+      {
+        //robotMoving = true;
+        //ledcWrite(1, 1);
+        //ledcWrite(2, 1);
+        g_platform.setLeft(-1.);
+        g_platform.setRight(1.);
+      }
+      else if (cmd == cmdRight)
+      {
+        //robotMoving = true;
+        //ledcWrite(1, 100);
+        //ledcWrite(2, 30);
+        g_platform.setLeft(1.);
+        g_platform.setRight(-1.);
+      }
+      else if (cmd == cmdStop)
+      {
+        //robotMoving = false;
+        //ledcWrite(1, 0);
+        //ledcWrite(2, 0);
+        g_platform.setLeft(0);
+        g_platform.setRight(0);
+      }
+      else if (cmd == cmdLedFeedback)
+      {
+        ledFeedbackEnabled = !ledFeedbackEnabled;
+      }
+      else if (cmd.find(cmdLed) != std::string::npos)
+      {
+        setLed(cmd.at(3), cmd.at(4));
+      }
+      else if (cmd.find(cmdLine) != std::string::npos)
+      {
+         //TODO figure out what exactly this does
+        // Get the threshold value
+        //leftLineThreshold = atoi(cmd.substr(4, cmd.length() - 4).c_str());
+        //rightLineThreshold = leftLineThreshold;
+        // Remember value on the field (white or black)
+        //leftLineValueField = analogRead(34);
+        //rightLineValueField = analogRead(33);
+        // Save the threshold value in the persistence
+        //preferences.begin("sumorobot", false);
+        //preferences.putUInt("line_threshold", leftLineThreshold);
+        //preferences.end();
+      }
+      else if (cmd.find(cmdSonar) != std::string::npos)
+      {
+        uint8_t newThreshold = atoi(cmd.substr(5, cmd.length() - 5).c_str());
+        g_ultrasonicSensor.setThreshold(newThreshold);
+        // Save the threshold value in the persistence
+        preferences.begin("sumorobot", false);
+        preferences.putUInt("sonar_threshold", newThreshold);
+        preferences.end();
+      }
+      else if (cmd.find(cmdServo) != std::string::npos)
+      {
+        setServo(cmd.at(5), atoi(cmd.substr(6, cmd.length() - 6).c_str()));
+      }
+      else if (cmd.find(cmdName) != std::string::npos)
+      {
+        preferences.begin("sumorobot", false);
+        preferences.putString("name", cmd.substr(4, cmd.length() - 4).c_str());
+        preferences.end();
+      }
+    }
+  }
+};
+
+
+    // BLE connect and disconnect callbacks
+    class MyServerCallbacks : public BLEServerCallbacks
+    {
+        void onConnect(BLEServer *pServer)
+        {
+            deviceConnected = true;
+        };
+
+        void onDisconnect(BLEServer *pServer)
+        {
+            deviceConnected = false;
+        }
+    };
+
+    SumoBluetooth::SumoBluetooth()
+        : m_deviceConnected(false)
+    {
+    }
+
+    void SumoBluetooth::init(String name)
+    {
+
+        BLEDevice::init(name.c_str());
+
+        // Create the BLE server
+        bleServer = BLEDevice::createServer();
+        bleServer->setCallbacks(new MyServerCallbacks());
+
+        // Create device info service and characteristic
+        BLEService *deviceInfoService = bleServer->createService(BLEUUID((uint16_t)0x180a));
+        BLECharacteristic *modelCharacteristic = deviceInfoService->createCharacteristic(
+            (uint16_t)0x2A24, BLECharacteristic::PROPERTY_READ);
+        BLECharacteristic *firmwareCharacteristic = deviceInfoService->createCharacteristic(
+            (uint16_t)0x2A26, BLECharacteristic::PROPERTY_READ);
+        BLECharacteristic *manufacturerCharacteristic = deviceInfoService->createCharacteristic(
+            (uint16_t)0x2a29, BLECharacteristic::PROPERTY_READ);
+        manufacturerCharacteristic->setValue("RoboKoding LTD");
+        modelCharacteristic->setValue("SumoRobot");
+        firmwareCharacteristic->setValue(VERSION);
+
+        // Create battery service
+        BLEService *batteryService = bleServer->createService(BLEUUID((uint16_t)0x180f));
+        // Mandatory battery level characteristic with notification and presence descriptor
+        BLE2904 *batteryLevelDescriptor = new BLE2904();
+        batteryLevelDescriptor->setFormat(BLE2904::FORMAT_UINT8);
+        batteryLevelDescriptor->setNamespace(1);
+        batteryLevelDescriptor->setUnit(0x27ad);
+        // Create battery level characteristics
+        batteryLevelCharacteristic = batteryService->createCharacteristic(
+            (uint16_t)0x2a19, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+        batteryLevelCharacteristic->addDescriptor(batteryLevelDescriptor);
+        batteryLevelCharacteristic->addDescriptor(new BLE2902());
+
+        // Create the BLE NUS service
+        BLEService *nusService = bleServer->createService(NUS_SERVICE_UUID);
+
+        // Create a BLE NUS transmit characteristic
+        nusTxCharacteristic = nusService->createCharacteristic(
+            NUS_CHARACTERISTIC_TX_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+        nusTxCharacteristic->addDescriptor(new BLE2902());
+
+        // Create a BLE NUS receive characteristics
+        BLECharacteristic *nusRxCharacteristic = nusService->createCharacteristic(
+            NUS_CHARACTERISTIC_RX_UUID, BLECharacteristic::PROPERTY_WRITE);
+        nusRxCharacteristic->setCallbacks(new MyCallbacks());
+
+        // Start the services
+        deviceInfoService->start();
+        batteryService->start();
+        nusService->start();
+
+        // Start advertising
+        bleServer->getAdvertising()->start();
+    }
+}
