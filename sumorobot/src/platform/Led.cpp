@@ -40,4 +40,10 @@ namespace sumobot
     {
         set(false);
     }
+
+
+    void Led::flip()
+    {
+        set(!m_isOn);
+    }
 }

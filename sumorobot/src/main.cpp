@@ -15,6 +15,7 @@
 #include "platform/LineSensor.h"
 #include "platform/Led.h"
 #include "platform/Battery.h"
+#include "platform/WifiRemote.h"
 
 #include <WiFi.h>
 #include <EStopReceiver.h>
@@ -60,6 +61,9 @@ sumobot::Led g_yellowLedLeft(IO_YELLOW_LED_LEFT);
 sumobot::Led g_yellowLedRight(IO_YELLOW_LED_RIGHT);
 sumobot::Led g_connectionLed(IO_CONNECTION_LED, true);
 
+const static unsigned int IO_BUZZER = 26;
+sumobot::Led g_buzzer(IO_BUZZER);
+
 const static unsigned int IO_ULTRASONIC_SENSOR_TRIGGER = 27;
 const static unsigned int IO_ULTRASONIC_SENSOR_ECHO = 14;
 sumobot::UltrasonicSensor g_ultrasonicSensor(IO_ULTRASONIC_SENSOR_TRIGGER, IO_ULTRASONIC_SENSOR_ECHO);
@@ -77,7 +81,7 @@ const static unsigned int IO_LINE_PHOTO_TRANSISTOR_RIGHT = 23; // TODO check if 
 const static unsigned int IO_LINE_ANALOG_RIGHT = 33;
 sumobot::LineSensor g_lineRight(IO_LINE_PHOTO_TRANSISTOR_RIGHT, IO_LINE_ANALOG_RIGHT, LINE_THRESHOLD);
 
-
+sumobot::WifiRemote g_remote;
 uint8_t WIFI_CHANNEL = 0;
 
 // id of the cell to which the station and the wireless estop belong
@@ -103,7 +107,7 @@ estop::EStopState g_previousEStopState;
 
 void updateSensorFeedback()
 {
-  g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose());
+  //g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose());
   g_yellowLedLeft.set(g_lineLeft.isLine());
   g_yellowLedRight.set(g_lineRight.isLine());
 }
@@ -119,7 +123,7 @@ void updateSensorValues()
   sensorValues[2] = leftLineValue;
   sensorValues[3] = rightLineValue >> 8;
   sensorValues[4] = rightLineValue;
-  sensorValues[5] = digitalRead(25);
+  sensorValues[5] = g_battery.isCharging();
 }
 
 void blinkConnectionLed()
@@ -140,15 +144,11 @@ void setup()
   //disable sleep mode
   //WiFi.setSleepMode(WIFI_NONE_SLEEP);
 
-  g_eStopReceiver = new estop::EStopReceiver(BUTTON_STATION_MAC, WIFI_CHANNEL, CELL_ID, MSG_TIME_MS * SKIP_BEFORE_TIMEOUT);
-  g_eStopReceiver->init();
-  g_previousEStopState = g_eStopReceiver->getEStopState();
+  //g_eStopReceiver = new estop::EStopReceiver(BUTTON_STATION_MAC, WIFI_CHANNEL, CELL_ID, MSG_TIME_MS * SKIP_BEFORE_TIMEOUT);
+  //g_eStopReceiver->init();
+  //g_previousEStopState = g_eStopReceiver->getEStopState();
   Serial.begin(115200);
   Log::init(new SerialLogger());
-
-#if DEBUG
-  Serial.println("Waiting a client connection to notify...");
-#endif
 
   // Setup sonar timer to update it's value
   sonarTimer.attach_ms(50, updateSensorValues);
@@ -162,10 +162,13 @@ void setup()
   g_battery.init();
   g_lineLeft.init();
   g_lineRight.init();
+  g_buzzer.init();
+  g_remote.init();
+
   connectionLedTimer.attach_ms(2000, blinkConnectionLed);
 
-  pinMode(26, OUTPUT);
-  digitalWrite(26, HIGH);
+
+
 }
 
 void cycleTest()
@@ -204,7 +207,6 @@ void velTest()
   }
 }
 
-bool on = false;
 void loop()
 {
   // When BLE got disconnected
@@ -227,6 +229,7 @@ void loop()
     digitalWrite(5, LOW);
   }
   */
+ /*
  if(g_eStopReceiver->getEStopState() == estop::ESTOP_FREE)
  {
    g_platform.setLeft(1. );
@@ -237,5 +240,11 @@ void loop()
     g_platform.setLeft(0);
    g_platform.setRight(0);
  }
-  delay(50);
+ */
+  g_remote.loop();
+  g_buzzer.set(g_remote.getHonk());
+  g_platform.setLeft(g_remote.getLeft());
+  g_platform.setRight(g_remote.getRight());
+  g_bigBlueLed.off();
+  delay(10);
 }

@@ -8,6 +8,7 @@ namespace sumobot
         void set(bool on);
         void on();
         void off();
+        void flip();
 
         private: 
         unsigned int m_io;
