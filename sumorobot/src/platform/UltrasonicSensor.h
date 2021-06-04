@@ -7,7 +7,7 @@ namespace sumobot
     class UltrasonicSensor
     {
     public:
-        UltrasonicSensor(unsigned int ioTrigger, unsigned int ioEcho);
+        UltrasonicSensor(unsigned int ioTrigger, unsigned int ioEcho, uint8_t threshold);
         void init();
         void setThreshold(uint8_t threshold);
         uint8_t getDistance();

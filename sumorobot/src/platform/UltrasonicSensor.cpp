@@ -3,12 +3,12 @@
 
 namespace sumobot
 {
-    UltrasonicSensor::UltrasonicSensor(unsigned int ioTrigger, unsigned int ioEcho)
+    UltrasonicSensor::UltrasonicSensor(unsigned int ioTrigger, unsigned int ioEcho, uint8_t threshold)
         : m_ioTrigger(ioTrigger),
           m_ioEcho(ioEcho),
           m_distance(0),
           m_sonar(m_ioTrigger, m_ioEcho, 50),
-          m_sonarThreshold(40)
+          m_sonarThreshold(threshold)
 
     {
     }

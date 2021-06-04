@@ -66,7 +66,8 @@ sumobot::Led g_buzzer(IO_BUZZER);
 
 const static unsigned int IO_ULTRASONIC_SENSOR_TRIGGER = 27;
 const static unsigned int IO_ULTRASONIC_SENSOR_ECHO = 14;
-sumobot::UltrasonicSensor g_ultrasonicSensor(IO_ULTRASONIC_SENSOR_TRIGGER, IO_ULTRASONIC_SENSOR_ECHO);
+const static unsigned int IO_ULTRASONIC_SENSOR_DISTANCE = 20;
+sumobot::UltrasonicSensor g_ultrasonicSensor(IO_ULTRASONIC_SENSOR_TRIGGER, IO_ULTRASONIC_SENSOR_ECHO, IO_ULTRASONIC_SENSOR_DISTANCE);
 
 const static unsigned int IO_IS_CHARGING = 25;
 const static unsigned int IO_BATTERY_VOLTAGE = 32;
@@ -107,7 +108,7 @@ estop::EStopState g_previousEStopState;
 
 void updateSensorFeedback()
 {
-  //g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose());
+  g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose());
   g_yellowLedLeft.set(g_lineLeft.isLine());
   g_yellowLedRight.set(g_lineRight.isLine());
 }
@@ -243,8 +244,20 @@ void loop()
  */
   g_remote.loop();
   g_buzzer.set(g_remote.getHonk());
-  g_platform.setLeft(g_remote.getLeft());
-  g_platform.setRight(g_remote.getRight());
-  g_bigBlueLed.off();
+  float left = g_remote.getLeft();
+  float right = g_remote.getRight();
+  if(g_ultrasonicSensor.isObstacleClose())
+  {
+    if(left > 0.)
+    {
+      left = 0;
+    }
+    if(right > 0.)
+    {
+      right = 0;
+    }
+  }
+  g_platform.setLeft(left);
+  g_platform.setRight(right);
   delay(10);
 }
