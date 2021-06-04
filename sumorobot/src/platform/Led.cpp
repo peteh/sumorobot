@@ -6,7 +6,7 @@ namespace sumobot
     Led::Led(unsigned int io, bool reversed)
     : m_io(io),
     m_isOn(false),
-    m_reversed(false)
+    m_reversed(reversed)
     {
 
     }
