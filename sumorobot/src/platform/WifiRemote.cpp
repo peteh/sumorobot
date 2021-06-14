@@ -55,13 +55,12 @@ namespace sumobot
         //Log::info("Message received");
         StaticJsonDocument<256> doc;
         deserializeJson(doc, payload);
-        float left = doc["left"]; 
-        float right = doc["right"]; 
-        bool honk = doc["honk"];
+        float left = doc["aXL"]; 
+        float right = doc["aXR"]; 
+        bool honk = doc["bTR"];
         m_left = left;
         m_right = right;
         m_honk = honk;
-        Log::info(".");
     }
 
     String WifiRemote::macToStr(const uint8_t *mac)
@@ -109,7 +108,7 @@ namespace sumobot
                 // ... and resubscribe
                 // topic + clientID + in
                 String subscribeTopic = "remote";
-                m_mqttClient.subscribe(subscribeTopic.c_str());
+                m_mqttClient.subscribe(subscribeTopic.c_str(), 0); // qos = 0, we don't care if we lose something
                 Log::infof("subscribed to: %s", subscribeTopic.c_str());
             }
             else
