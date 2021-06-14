@@ -8,6 +8,7 @@ from threading import Thread
 
 from inputs import get_gamepad
 
+DEAD_ZONE = 0.2
 
 class GamePad():
     def __init__(self):
@@ -40,7 +41,7 @@ class GamePad():
 
     def _normalizeAxis(self, raw):
         val = round( - raw / 32767, 2)
-        if abs(val) < 0.15:
+        if abs(val) < DEAD_ZONE:
             val = 0.
         return val
 
