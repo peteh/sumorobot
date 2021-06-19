@@ -10,10 +10,15 @@ namespace sumobot
     char pass[] = "fortunabier";
     WifiRemote::WifiRemote()
         : m_wifiClient(),
-          m_mqttClient(m_wifiClient), 
+          m_mqttClient(m_wifiClient),
           m_honk(false),
+          m_leftLedOverride(false),
+          m_rightLedOverride(false),
+          m_middleLedOverride(false),
+          m_distanceOverride(false),
           m_left(0.f),
-          m_right(0.f)
+          m_right(0.f),
+          m_timestampLastMsg(millis())
     {
     }
     // TODO: reconnect
@@ -50,17 +55,39 @@ namespace sumobot
         return m_right;
     }
 
+    bool WifiRemote::getLeftLedOverride()
+    {
+        return m_leftLedOverride;
+    }
+
+    bool WifiRemote::getRightLedOverride()
+    {
+        return m_rightLedOverride;
+    }
+
+    bool WifiRemote::getMiddleLedOverride()
+    {
+        return m_middleLedOverride;
+    }
+
+    bool WifiRemote::getDistanceOverride()
+    {
+        return m_distanceOverride;
+    }
+
     void WifiRemote::messageCallback(char *topic, byte *payload, unsigned int length)
     {
         //Log::info("Message received");
         StaticJsonDocument<256> doc;
         deserializeJson(doc, payload);
-        float left = doc["aXL"]; 
-        float right = doc["aXR"]; 
-        bool honk = doc["bTR"];
-        m_left = left;
-        m_right = right;
-        m_honk = honk;
+        m_left = doc["left"] | 0.;
+        m_right = doc["right"] | 0. ;
+        m_honk = doc["honk"] | false;
+        m_leftLedOverride = doc["overrideLedLeft"] | false;
+        m_rightLedOverride = doc["overrideLedRight"] | false;
+        m_middleLedOverride = doc["overrideLedMiddle"] | false;
+        m_distanceOverride = doc["overrideDistance"] | false;
+        m_timestampLastMsg = millis();
     }
 
     String WifiRemote::macToStr(const uint8_t *mac)
@@ -85,40 +112,56 @@ namespace sumobot
     }
     void WifiRemote::loop()
     {
+        reconnect();
         m_mqttClient.loop();
+    }
+
+    void WifiRemote::handleMsgTimeout()
+    {
+        // if we haven't received a msg for some time
+        // we set everything to 0
+        if (millis() - m_timestampLastMsg > 1000)
+        {
+            m_honk = false;
+            m_left = 0.;
+            m_right = 0.;
+        }
     }
 
     void WifiRemote::reconnect()
     {
-        // Loop until we're reconnected
-        while (!m_mqttClient.connected())
+        // skip if we are already connected
+        if (m_mqttClient.connected())
         {
-            Log::info("Attempting MQTT connection...");
+            return;
+        }
 
-            String clientId = composeClientID();
-            clientId += "-";
-            clientId += String(micros() & 0xff, 16); // to randomise. sort of
+        // try one reconnect attempt
+        Log::info("Attempting MQTT connection...");
 
-            // Attempt to connect
-            if (m_mqttClient.connect(clientId.c_str()))
-            {
-                Log::info("connected");
-                // Once connected, publish an announcement...
-                //client.publish(ROOT_TOPIC.c_str(), ("connected " + composeClientID()).c_str() , true );
-                // ... and resubscribe
-                // topic + clientID + in
-                String subscribeTopic = "remote";
-                m_mqttClient.subscribe(subscribeTopic.c_str(), 0); // qos = 0, we don't care if we lose something
-                Log::infof("subscribed to: %s", subscribeTopic.c_str());
-            }
-            else
-            {
-                Log::errorf("failed, rc=%d", m_mqttClient.state());
-                Log::errorf(" wifi=%d", WiFi.status());
-                Log::error(" try again in 5 seconds");
-                // Wait 5 seconds before retrying
-                delay(5000);
-            }
+        String clientId = composeClientID();
+        clientId += "-";
+        clientId += String(micros() & 0xff, 16); // to randomise. sort of
+
+        // Attempt to connect
+        if (m_mqttClient.connect(clientId.c_str()))
+        {
+            Log::info("connected");
+            // Once connected, publish an announcement...
+            //client.publish(ROOT_TOPIC.c_str(), ("connected " + composeClientID()).c_str() , true );
+            // ... and resubscribe
+            // topic + clientID + in
+            String subscribeTopic = "remote/2wheelguy";
+            m_mqttClient.subscribe(subscribeTopic.c_str(), 0); // qos = 0, we don't care if we lose something
+            Log::infof("subscribed to: %s", subscribeTopic.c_str());
+        }
+        else
+        {
+            Log::errorf("failed, rc=%d", m_mqttClient.state());
+            Log::errorf(" wifi=%d", WiFi.status());
+            Log::error(" try again in 5 seconds");
+            // Wait 5 seconds before retrying
+            delay(5000);
         }
     }
 }

@@ -21,6 +21,8 @@ namespace sumobot
         void setCycleRight(uint32_t cycle);
         private: 
 
+        float roundToStep(float f, uint steps);
+
         int m_leftDutyCycle; 
         int m_rightDutyCycle;
         float m_cycleCenter;

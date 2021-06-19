@@ -108,9 +108,9 @@ estop::EStopState g_previousEStopState;
 
 void updateSensorFeedback()
 {
-  g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose());
-  g_yellowLedLeft.set(g_lineLeft.isLine());
-  g_yellowLedRight.set(g_lineRight.isLine());
+  g_bigBlueLed.set(g_ultrasonicSensor.isObstacleClose() || g_remote.getMiddleLedOverride());
+  g_yellowLedLeft.set(g_lineLeft.isLine() || g_remote.getLeftLedOverride());
+  g_yellowLedRight.set(g_lineRight.isLine() || g_remote.getRightLedOverride());
 }
 
 void updateSensorValues()
@@ -246,7 +246,7 @@ void loop()
   g_buzzer.set(g_remote.getHonk());
   float left = g_remote.getLeft();
   float right = g_remote.getRight();
-  if(g_ultrasonicSensor.isObstacleClose())
+  if(g_ultrasonicSensor.isObstacleClose() && !g_remote.getDistanceOverride())
   {
     if(left > 0.)
     {

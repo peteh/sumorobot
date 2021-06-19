@@ -6,7 +6,7 @@ namespace sumobot
         : m_leftDutyCycle(0),
           m_rightDutyCycle(0),
           m_cycleCenter(71), // original 77
-          m_cycleWidth(20) // theoretcially 57.5
+          m_cycleWidth(20)   // theoretcially 57.5
     {
     }
 
@@ -34,6 +34,11 @@ namespace sumobot
         ledcWrite(CHANNEL_PWM_RIGHT_DRIVE, cycle);
     }
 
+    float Platform::roundToStep(float f, uint steps)
+    {
+        return floor((f * steps) + 0.5) / steps;
+    }
+
     void Platform::setLeft(float velFactor)
     {
         int cycle = 0;
@@ -41,11 +46,11 @@ namespace sumobot
         //hobby servos: 40 to 115, centre 77
 
         float speed = velFactor * m_cycleWidth; // (115 - 40) / 2
-        if(velFactor != 0)
-        {           
+        if (velFactor != 0)
+        {
             cycle = (speed + m_cycleCenter);
         }
-        
+
         if (cycle == m_leftDutyCycle)
         {
             return;
@@ -61,11 +66,11 @@ namespace sumobot
         //hobby servos: 40 to 115, centre 77
 
         float speed = -1. * velFactor * m_cycleWidth;
-        if(velFactor != 0)
-        {            
-            cycle = (speed + 77);
+        if (velFactor != 0)
+        {
+            cycle = (speed + m_cycleCenter);
         }
-        
+
         if (cycle == m_rightDutyCycle)
         {
             return;
