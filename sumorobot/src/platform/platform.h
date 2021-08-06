@@ -11,7 +11,7 @@ namespace sumobot
 
     class Platform
     {
-        public: 
+    public:
         Platform();
         void init();
         void setLeft(float velFactor);
@@ -19,11 +19,12 @@ namespace sumobot
 
         void setCycleLeft(uint32_t cycle);
         void setCycleRight(uint32_t cycle);
-        private: 
 
+    private:
+        int calculateDutyCycle(float velFactor);
         float roundToStep(float f, uint steps);
 
-        int m_leftDutyCycle; 
+        int m_leftDutyCycle;
         int m_rightDutyCycle;
         float m_cycleCenter;
         float m_cycleWidth;

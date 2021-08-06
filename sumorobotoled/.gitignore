@@ -1,0 +1,15 @@
+# ignore code file
+code.py
+# ignore backup files
+._*
+* Mac OS stuff
+.DS_Store
+# ignore the ESP32 MicroPython binary
+esp32*.bin
+# ignore the development config file
+config-dev.json
+.pio
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch
